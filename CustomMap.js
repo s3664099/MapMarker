@@ -1,8 +1,9 @@
 
-//TO DO: When the mouse goes over the marker that marker remains and becomes bigger
-//TO DO: When zoom becomes 15 all of the markers become bigger
-//TO DO: Change Markers when change select box
-
+//TODO - Redraw map when select box has changed
+//TODO - Red Border around closed items
+//TODO - Popup box smaller text and just name
+//TODO - when click on item, HTML page below displayed
+//TODO - Make Page look nicer with CSS.
 
 //Creates the map
 map = new OpenLayers.Map("demoMap");
@@ -15,6 +16,8 @@ var lat = -37.8167717;
 var zoom = 10;
 var marker = new Array();
 var markerLarge = new Array();
+var icons = new Array();
+var shut = new Array();
 
 //Not entirely sure what these are for, though this does have something to do
 //with the way the map is located. Details are found on the OpenLayers documentation
@@ -38,35 +41,52 @@ var markSet = false;
 //Tells whether large icons are being used
 var largeIcons = false;
 
+//Tells whether the 'Google Maps' style icons are being used
+var pointIcon = true;
+
 //This listener listens from when the user stops zooming
 map.events.register('zoomend',map, function(){
+
+	checkZoom();
+
+});
+
+//A fuction that checks the zoom level and adjusts the markers accordingly
+function checkZoom() {
 
 	//the zoom level is recorded
 	var zoomLevel = map.getZoom();
 
 	//if it is greater than a certain point (14) then the icons are enlarged
 	//and the use of the large icons is recorded
-	if (zoomLevel>14 && markSet && !largeIcons)
+	if (zoomLevel>16 && markSet)
 	{
 		hideMarkers();
 		showLargeMarkers();
 		largeIcons = true;
 
-	//if it is kless than a certain point (15) then the icons are shrunk
-	//and the use of the small icons is recorded
-	} else if (zoomLevel<15 && markSet && largeIcons) {
+	//if it is less than a certain point (15) then the icons are shrunk
+	//and the use of the small icons is recorded. Further icons are only shown under
+	//a certain point, otherwise we use 'Google Maps' markers
+	} else if (zoomLevel<17 && zoomLevel>12 && markSet) {
 
 		hideLargeMarkers();
+		hideIcons();
 		showMarkers();
 		largeIcons = false;
+		pointIcon = false;
+
+	//this function changes all of the icons into 'Google Map' style markers
+	} else {
+		hideMarkers();
+		showIcons();
+		pointIcon = true;
 	}
 
-
-});
-
+}
 
 //This function adds the markers to the map
-function addMarker(a, b, c, d, e, f)
+function addMarker(a, b, c, d, e, f, g)
 {
 
 	//setting the varibables due to isses
@@ -76,29 +96,24 @@ function addMarker(a, b, c, d, e, f)
 	var name = c;
 	var address = d.substring(1,d.length-1);
 	var type = e;
+	shut[f] = g;
 
 	//Sets the location of the marker
 	var location = new OpenLayers.LonLat(lati, long).transform(fromProjection,toProjection);
 	
 	var icon;
 
-	if (markType == "marker")
-	{
-		//calls the marker image
-		icon = getMarker();
+	//calls the marker image
+	tag = getMarker();
 
-	} else {
+	//sets the size of the marker in pixels
+	var size = new OpenLayers.Size(20,20);
 
-		//sets the size of the marker in pixels
-		var size = new OpenLayers.Size(20,20);
+	//calls the icon image respresenting the type
+	icon = getIcon(type, size);
 
-		//calls the icon image respresenting the type
-		icon = getIcon(type, size);
-
-		//Notes that the markers have now been set
-		markSet = true;
-
-	}
+	//Notes that the markers have now been set
+	markSet = true;
 
 	//this creates the layer with the name Marker
 	var markerLayer = new OpenLayers.Layer.Markers("Markers");
@@ -106,12 +121,19 @@ function addMarker(a, b, c, d, e, f)
 	//Adds the layer to the map
 	map.addLayer(markerLayer);
 
+	//this creates a tag similar to the markers on google maps
+	//for when the map is above a certain zoom level
+	icons[f] = new OpenLayers.Marker(location, tag);
+	markerLayer.addMarker(icons[f]);
+
 	//the marker is then created
 	marker[f] = new OpenLayers.Marker(location, icon);
 
+	//the marker is then hidden (unless the map is at a certain zoom level)
+	marker[f].display(false);
+
 	//the marker is then added to the layer
 	markerLayer.addMarker(marker[f]);
-
 
 	//A second marker is created and hidden
 	//this is for when the icon is clicked and when the area is zoomed in beyond a certain point
@@ -121,6 +143,13 @@ function addMarker(a, b, c, d, e, f)
 	markerLayer.addMarker(markerLarge[f]);
 	markerLarge[f].display(false);
 
+	//checks to see if the place is closed and whether we are displaying them
+	if (displayClosed(shut[f])){
+
+		//if it returns false, then the marker is not displayed
+		icons[f].display(false);
+	}
+
 	//This is how events are added to the markers
 	//This event will display the details of the marker when it is clicked
 	//Unfortunately, I've noticed that the longitude and latitude characteristics are
@@ -128,7 +157,11 @@ function addMarker(a, b, c, d, e, f)
 	//since I would like to have it hover
 	markerLayer.events.register("mouseover", markerLayer, function(e){
 
+		//All of the markers are hidden when the cursor goes over a location
+		//This is to focus on the location
 		hideMarkers();
+		hideIcons();
+		hideLargeMarkers();
 		markerLarge[f].display(true);
 
 		//This creates a popup which is called when the mouse moves over the marker.
@@ -145,16 +178,41 @@ function addMarker(a, b, c, d, e, f)
 	//This event removes the popup when the mouse leaves the marker
 	markerLayer.events.register("mouseout", markerLayer, function(e){
 
-		showMarkers();
 		markerLarge[f].display(false);
-
+		checkZoom();
+		
 		map.removePopup(popup);
 
 	});
 
 }
 
-//These two functions hide and display all the markers.
+//this function checks to see whether a place has closed down, and whether we are displaying it or not
+function displayClosed(closed){
+
+	//gets the value of the list item regarding whether closed places are to be displayed
+	var showClosed = document.getElementById("markertype").value;
+
+	//value initially set to false, indicating that no, they won't be
+	var showItem = false;
+
+	//checks to see if the place is closed
+	if (closed == "Y") {
+
+		//if it hasn't shut down then it will be shown
+		showItem = true;
+
+	} else if (closed == "N" && showClosed == "NoClosed") {
+
+		//if it has shut down, but the user wishes to see it, then it is displayed.
+		showItem = true;
+	}
+
+	return showItem;
+
+}
+
+//These functions hide and display all the markers.
 //This is because it has been difficult to determine how to prevent
 //the markers from overriding the popups.
 function hideMarkers()
@@ -169,7 +227,27 @@ function showMarkers()
 {
 	for (j=1;j<marker.length;j++)
 	{
-		marker[j].display(true);
+		if(displayClosed(shut[j])) {
+			marker[j].display(true);
+		}
+	}
+}
+
+function hideIcons()
+{
+	for (j=1;j<marker.length;j++)
+	{
+		icons[j].display(false);
+	}
+}
+
+function showIcons()
+{
+	for (j=1;j<marker.length;j++)
+	{
+		if(displayClosed(shut[j])){
+	 		icons[j].display(true);
+	 	}
 	}
 }
 
@@ -185,7 +263,9 @@ function showLargeMarkers()
 {
 	for (j=1;j<marker.length;j++)
 	{
-		markerLarge[j].display(true);
+		if(displayClosed(shut[j])){
+			markerLarge[j].display(true);
+		}
 	}
 }
 
@@ -331,16 +411,12 @@ function getIcon(type, size)
 
 
 //The fuction use to load the CSV file into the system
-//This even fires once the file has been loaded after the button
+//This event fires once the file has been loaded after the button
 //has been clicked and the file selected.
 window.onload = function() {
 
 		//This calls the input tag from the HTML code
 		var fileInput = document.getElementById('docpicker');
-
-		//This calls the select box from the HTML code to determine whether it will be
-		//markers or icons
-		markType = document.getElementById('markertype').value;
 
 		//This adds the event listener to listen to whether a file has been loaded
 		fileInput.addEventListener('change', function(e) {
@@ -353,7 +429,7 @@ window.onload = function() {
 			if (file.type.match(textType)) {
 				var reader = new FileReader();
 
-				//the event (e) is fired when a load even occurs
+				//the event (e) is fired when a load event occurs
 				reader.onload = function (e) {
 
 					//The number of rows are determined and stored in an array
@@ -374,12 +450,13 @@ window.onload = function() {
 							var address = cells[1];
 							var lati = cells[4];
 							var long = cells[5];
-							var type = cells[8];
+							var type = cells[7];
+							var closed = cells[8];
 
 							//markers for the places are then added to the map.
 							//Note that the longitude goes first, and then the latitude
 							//The location of the marker is also returned
-							addMarker(long,lati, title, address, type, i);
+							addMarker(long,lati, title, address, type, i, closed);
 						}
 					}
 				}
