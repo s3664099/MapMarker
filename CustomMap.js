@@ -60,6 +60,7 @@ function checkZoom() {
 
 	//if it is greater than a certain point (14) then the icons are enlarged
 	//and the use of the large icons is recorded
+
 	if (zoomLevel>16)
 	{
 		hideMarkers();
@@ -70,13 +71,13 @@ function checkZoom() {
 	//if it is less than a certain point (15) then the icons are shrunk
 	//and the use of the small icons is recorded. Further icons are only shown under
 	//a certain point, otherwise we use 'Google Maps' markers
+
 	} else if (zoomLevel<17 && zoomLevel>14) {
 
 		hideLargeMarkers();
 		showMarkers();
 		largeIcons = false;
 		showInfo = true;
-
 
 	//this function changes all of the icons into 'Google Map' style markers
 	} else {
@@ -131,6 +132,7 @@ function addMarker(a, b, c, d, e, f, g)
 	//for when the map is above a certain zoom level
 	icons[f] = new OpenLayers.Marker(location, tag);
 	markerLayer.addMarker(icons[f]);
+
 
     //hides the icons unless the flag has been set
 	if (document.getElementById("icontype").value == "HideMarker") {
@@ -373,6 +375,7 @@ window.onload = function() {
 							//markers for the places are then added to the map.
 							//Note that the longitude goes first, and then the latitude
 							//The location of the marker is also returned
+
 							addMarker(long, lati, title, address, type, i, closed);
 						}
 					}
