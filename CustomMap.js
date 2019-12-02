@@ -1,10 +1,4 @@
 
-//TODO - Redraw map when select box has changed
-//TODO - Red Border around closed items
-//TODO - Popup box smaller text and just name
-//TODO - when click on item, HTML page below displayed
-//TODO - Make Page look nicer with CSS.
-
 //Creates the map
 map = new OpenLayers.Map("demoMap");
 var mapnik         = new OpenLayers.Layer.OSM();
@@ -38,6 +32,12 @@ var markType;
 //tells program whether markers have been set or not
 var markSet = false;
 
+//tells the program to show the location info if mouse hovers over it
+var showInfo = false;
+
+//flag to determine whether icons are to be shown
+var visibleIcons = false;
+
 //Tells whether large icons are being used
 var largeIcons = false;
 
@@ -47,8 +47,9 @@ var pointIcon = true;
 //This listener listens from when the user stops zooming
 map.events.register('zoomend',map, function(){
 
+	displayIcon();
 	checkZoom();
-
+	
 });
 
 //A fuction that checks the zoom level and adjusts the markers accordingly
@@ -59,28 +60,33 @@ function checkZoom() {
 
 	//if it is greater than a certain point (14) then the icons are enlarged
 	//and the use of the large icons is recorded
-	if (zoomLevel>16 && markSet)
+	if (zoomLevel>16)
 	{
 		hideMarkers();
 		showLargeMarkers();
 		largeIcons = true;
+		showInfo = true;
 
 	//if it is less than a certain point (15) then the icons are shrunk
 	//and the use of the small icons is recorded. Further icons are only shown under
 	//a certain point, otherwise we use 'Google Maps' markers
-	} else if (zoomLevel<17 && zoomLevel>14 && markSet) {
+	} else if (zoomLevel<17 && zoomLevel>14) {
 
 		hideLargeMarkers();
-		hideIcons();
 		showMarkers();
 		largeIcons = false;
-		pointIcon = false;
+		showInfo = true;
+
 
 	//this function changes all of the icons into 'Google Map' style markers
 	} else {
 		hideMarkers();
-		showIcons();
-		pointIcon = true;
+
+        //if the icons aren't being shown then the info won't
+        //be displayed if the mouse hovers over the location
+		if(!showIcons) {
+			showInfo = false;
+		}
 	}
 
 }
@@ -126,6 +132,11 @@ function addMarker(a, b, c, d, e, f, g)
 	icons[f] = new OpenLayers.Marker(location, tag);
 	markerLayer.addMarker(icons[f]);
 
+    //hides the icons unless the flag has been set
+	if (document.getElementById("icontype").value == "HideMarker") {
+		icons[f].display(false);
+	}
+
 	//the marker is then created
 	marker[f] = new OpenLayers.Marker(location, icon);
 
@@ -157,31 +168,39 @@ function addMarker(a, b, c, d, e, f, g)
 	//since I would like to have it hover
 	markerLayer.events.register("mouseover", markerLayer, function(e){
 
-		//All of the markers are hidden when the cursor goes over a location
-		//This is to focus on the location
-		hideMarkers();
-		hideIcons();
-		hideLargeMarkers();
-		markerLarge[f].display(true);
+		if (showInfo) {
+			//All of the markers are hidden when the cursor goes over a location
+			//This is to focus on the location
+			hideMarkers();
+			hideIcons();
+			hideLargeMarkers();
+			markerLarge[f].display(true);
 
-		//This creates a popup which is called when the mouse moves over the marker.
-		//The details of the popup is: name, location, size, what is displayed, and whether
-		//an escape button is included
-		popup = new OpenLayers.Popup(a, location,
-			new OpenLayers.Size(150, 150),
-			"<div style='border-style:solid;padding:5px'><b>"+name+"</b></br>"+address+"<div>",false);
+			//This creates a popup which is called when the mouse moves over the marker.
+			//The details of the popup is: name, location, size, what is displayed, and whether
+			//an escape button is included
+			popup = new OpenLayers.Popup(a, location,
+				new OpenLayers.Size(150, 150),
+				"<div style='border-style:solid;padding:5px'><b>"+name+"</b></br>"+address+"<div>",false);
 
-		//the popup is added to the map
-		map.addPopup(popup);
+			//the popup is added to the map
+			map.addPopup(popup);
+		}
 	});
 
 	//This event removes the popup when the mouse leaves the marker
 	markerLayer.events.register("mouseout", markerLayer, function(e){
 
-		markerLarge[f].display(false);
-		checkZoom();
+		if(showInfo) {
+			markerLarge[f].display(false);
+			checkZoom();
+
+			if (visibleIcons) {
+				showIcons();
+			}
 		
-		map.removePopup(popup);
+			map.removePopup(popup);
+		}
 
 	});
 
@@ -210,6 +229,24 @@ function displayClosed(closed){
 
 	return showItem;
 
+}
+
+//This function checks to see if the 'display icon' tab has been set
+//if it has, then it displays the marker icon, otherwise it doesn't
+//this is called whenever the zoom function occurs.
+function displayIcon() {
+
+	var displayIcon = document.getElementById("icontype").value;
+
+	if (displayIcon == "ShowMarker") {
+		visibleIcons = true;
+		showInfo = true;
+		showIcons();
+	} else {
+		visibleIcons = false;
+		showInfo = false;
+		hideIcons();
+	}
 }
 
 //These functions hide and display all the markers.
