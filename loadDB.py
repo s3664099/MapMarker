@@ -1,3 +1,6 @@
+#This file is designed to test that the contents have been
+#successfully saved to the database.
+
 import MySQLdb
 
 hostname = 'localhost'

@@ -1,3 +1,6 @@
+//This is the same as the python script, except it has been
+//written in c++
+
 #include <iostream>
 #include <stdlib.h>
 
